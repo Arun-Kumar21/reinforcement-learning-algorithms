@@ -34,6 +34,11 @@ class Agent:
         # DQ Network
         self.DQN=DQN(self.input_state_features, self.hidden_features).to(self.device)
 
+        # Initialize the target network to stabilize training by addressing the moving target problem
+        self.DQN_NEXT=DQN(self.input_state_features, self.hidden_features).to(device)
+        self.DQN_NEXT.load_state_dict(self.DQN.state_dict())
+        self.DQN_NEXT.eval()
+
         # Adam Optimizer
         self.optimizer=optim.Adam(self.DQN.parameters(), lr=self.lr)
 
@@ -70,9 +75,11 @@ class Agent:
     def update_epsilon(self):
         self.epsilon=max(self.min_epsilon, self.epsilon*self.epsilon_decay)
 
+    # Function to update Target network after few steps
+    def update_target_network(self):
+        self.DQN_NEXT.load_state_dict(self.DQN.state_dict())
 
     def inference(self, state, device='cpu'):
-
         self.DQN = self.DQN.to(device)
         self.DQN.eval()
 
@@ -83,7 +90,6 @@ class Agent:
 
 
     def train_step(self, batch_size):
-
         batch=self.replay_buffer.access_memory(batch_size, self.device)
 
         if batch is None:
@@ -96,7 +102,8 @@ class Agent:
       
         with torch.no_grad():
             self.DQN.eval()
-            q_next_estimate=self.DQN(batch["next_states"])
+            # Use Target Network
+            q_next_estimate=self.DQN_NEXT(batch["next_states"])
             self.DQN.train()
     
         max_q_estimate=torch.max(q_next_estimate, dim=-1).values

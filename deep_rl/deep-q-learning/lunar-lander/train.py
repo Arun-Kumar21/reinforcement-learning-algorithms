@@ -16,8 +16,9 @@ def trainer(env,
             epsilon=1.0,
             epsilon_decay=0.999,
             min_epsilon=0.05,
-            log_freq=5,
+            log_freq=50,
             running_avg_steps=25,
+            update_target_freq=100,
             device="cpu"):
 
     agent=Agent(max_memories=max_memories,
@@ -29,8 +30,7 @@ def trainer(env,
                 epsilon=epsilon,
                 epsilon_decay=epsilon_decay,
                 min_epsilon=min_epsilon,
-                device=device
-                )
+                device=device)
 
     ending_tol=0
 
@@ -40,6 +40,7 @@ def trainer(env,
     for i in range(num_games):
 
         score = 0
+        step = 0
 
         state, _ = env.reset()
         done = False
@@ -55,6 +56,13 @@ def trainer(env,
             agent.replay_buffer.add_memories(state, next_state, action, reward, done)
 
             agent.train_step(batch_size)
+
+            # Update target Network after some steps
+            if step%update_target_freq==0:
+                agent.update_target_network()
+                # print("Target network updated")
+
+            step+=1
 
             state = next_state
 
